@@ -29,7 +29,13 @@ export async function POST(request: Request) {
                 transcript: report.transcript || "No transcript available",
             };
 
-            // If productive, save to Voicemail Store
+            // Save all calls to persistent store for Real Mode dashboard
+            // Dynamic import to avoid build issues
+            const { saveCall, saveVoicemail } = await import("@/lib/store");
+
+            saveCall(newCall);
+
+            // If productive, also save as voicemail
             if (isProductive) {
                 const voicemailData = {
                     ...newCall,
@@ -37,13 +43,11 @@ export async function POST(request: Request) {
                     duration: report.durationSeconds ? `${Math.floor(report.durationSeconds / 60)}:${(report.durationSeconds % 60).toString().padStart(2, '0')}` : "0:00",
                     summary: report.summary || report.analysis?.summary || "No summary available"
                 };
-
-                // Dynamic import to avoid build issues with fs in edge runtime if applicable (though this is node)
-                const { saveVoicemail } = await import("@/lib/store");
                 saveVoicemail(voicemailData);
                 console.log("Saved Voicemail:", voicemailData);
             }
 
+            // For MVP, still keep in-memory for immediate display, but this will be replaced by fetching from store
             realCalls.unshift(newCall);
             // Keep only last 50
             if (realCalls.length > 50) realCalls = realCalls.slice(0, 50);
@@ -59,5 +63,8 @@ export async function POST(request: Request) {
 }
 
 export async function GET() {
-    return NextResponse.json(realCalls);
+    // Dynamic import to avoid build issues
+    const { getCalls } = await import("@/lib/store");
+    const calls = getCalls();
+    return NextResponse.json(calls);
 }

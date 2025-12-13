@@ -69,7 +69,9 @@ export async function POST(request: Request) {
         });
 
         if (!response.ok) {
-            throw new Error(`Vapi API error: ${response.statusText}`);
+            const errorText = await response.text();
+            console.error("Vapi API Error Details:", errorText);
+            throw new Error(`Vapi API error: ${response.status} ${response.statusText} - ${errorText}`);
         }
 
         return NextResponse.json({ success: true, persona: personaId, greeting: firstMessage });

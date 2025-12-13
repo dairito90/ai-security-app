@@ -29,11 +29,19 @@ export async function POST(request: Request) {
                 transcript: report.transcript || "No transcript available",
             };
 
-            // If productive, also add to Voicemail Inbox (Simulated here by console log / separate store)
-            // In a real app, we'd save to a 'voicemails' table
+            // If productive, save to Voicemail Store
             if (isProductive) {
-                console.log("New Voicemail:", newCall);
-                // For MVP, we can push to a separate in-memory store or just flag it
+                const voicemailData = {
+                    ...newCall,
+                    isRead: false,
+                    duration: report.durationSeconds ? `${Math.floor(report.durationSeconds / 60)}:${(report.durationSeconds % 60).toString().padStart(2, '0')}` : "0:00",
+                    summary: report.summary || report.analysis?.summary || "No summary available"
+                };
+
+                // Dynamic import to avoid build issues with fs in edge runtime if applicable (though this is node)
+                const { saveVoicemail } = await import("@/lib/store");
+                saveVoicemail(voicemailData);
+                console.log("Saved Voicemail:", voicemailData);
             }
 
             realCalls.unshift(newCall);

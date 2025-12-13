@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Play, Pause, Trash2, PhoneIncoming, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -40,19 +40,44 @@ const mockVoicemails: Voicemail[] = [
 
 export default function VoicemailPage() {
     const [playingId, setPlayingId] = useState<string | null>(null);
-    const [voicemails, setVoicemails] = useState(mockVoicemails);
+    const [voicemails, setVoicemails] = useState<Voicemail[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    // Fetch voicemails on mount
+    useEffect(() => {
+        fetch("/api/voicemail")
+            .then(res => res.json())
+            .then(data => {
+                setVoicemails(data);
+                setIsLoading(false);
+            })
+            .catch(err => {
+                console.error("Failed to load voicemails", err);
+                setIsLoading(false);
+            });
+    }, []);
 
     const togglePlay = (id: string) => {
         if (playingId === id) {
             setPlayingId(null);
         } else {
             setPlayingId(id);
-            setTimeout(() => setPlayingId(null), 3000); // Simulate playback
+            // In a real app, we would play the audio URL here
+            // const audio = new Audio(voicemails.find(v => v.id === id)?.recordingUrl);
+            // audio.play();
+            setTimeout(() => setPlayingId(null), 3000);
         }
     };
 
-    const deleteVoicemail = (id: string) => {
+    const deleteVoicemail = async (id: string) => {
+        // Optimistic update
         setVoicemails(voicemails.filter(v => v.id !== id));
+
+        try {
+            await fetch(`/api/voicemail?id=${id}`, { method: "DELETE" });
+        } catch (error) {
+            console.error("Failed to delete voicemail", error);
+        }
     };
 
     return (

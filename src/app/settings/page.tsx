@@ -11,18 +11,53 @@ export default function SettingsPage() {
     const [greetingType, setGreetingType] = useState("standard");
     const [customGreeting, setCustomGreeting] = useState("Hi, I'm not available right now. Please leave a message.");
 
+    const [isSaving, setIsSaving] = useState(false);
+
     // Load settings on mount
     useState(() => {
         if (typeof window !== "undefined") {
             const savedSensitivity = localStorage.getItem("ai_security_sensitivity");
+            const savedPersona = localStorage.getItem("ai_security_persona");
+            const savedGreetingType = localStorage.getItem("ai_security_greeting_type");
+            const savedCustomGreeting = localStorage.getItem("ai_security_custom_greeting");
+
             if (savedSensitivity) setSensitivity(Number(savedSensitivity));
+            if (savedPersona) setPersona(savedPersona);
+            if (savedGreetingType) setGreetingType(savedGreetingType);
+            if (savedCustomGreeting) setCustomGreeting(savedCustomGreeting);
         }
     });
 
-    const handleSave = () => {
-        if (typeof window !== "undefined") {
-            localStorage.setItem("ai_security_sensitivity", sensitivity.toString());
-            alert("Settings saved!");
+    const handleSave = async () => {
+        setIsSaving(true);
+        try {
+            // Save local settings
+            if (typeof window !== "undefined") {
+                localStorage.setItem("ai_security_sensitivity", sensitivity.toString());
+                localStorage.setItem("ai_security_persona", persona);
+                localStorage.setItem("ai_security_greeting_type", greetingType);
+                localStorage.setItem("ai_security_custom_greeting", customGreeting);
+            }
+
+            // Update Vapi Persona & Greeting
+            const res = await fetch("/api/settings/persona", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    personaId: persona,
+                    greetingType: greetingType,
+                    greeting: customGreeting
+                }),
+            });
+
+            if (!res.ok) throw new Error("Failed to update AI persona");
+
+            alert("Settings saved & AI updated!");
+        } catch (error) {
+            console.error(error);
+            alert("Saved local settings, but failed to update AI.");
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -51,6 +86,7 @@ export default function SettingsPage() {
                         { id: "grandpa", name: "Confused Grandpa", desc: "Wastes time with endless stories and confusion.", icon: "👴" },
                         { id: "executive", name: "Busy Executive", desc: "Demands quick answers and schedules fake meetings.", icon: "👔" },
                         { id: "karen", name: "Angry Customer", desc: "Complains about everything and demands a manager.", icon: "😤" },
+                        { id: "assistant", name: "Personal Assistant", desc: "Polite, professional, and efficient call screening.", icon: "👩‍💼" },
                     ].map((p) => (
                         <button
                             key={p.id}
@@ -178,10 +214,20 @@ export default function SettingsPage() {
             <div className="flex justify-end">
                 <button
                     onClick={handleSave}
-                    className="flex items-center gap-2 px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium"
+                    disabled={isSaving}
+                    className="flex items-center gap-2 px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium disabled:opacity-50"
                 >
-                    <Save className="h-4 w-4" />
-                    Save Changes
+                    {isSaving ? (
+                        <>
+                            <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            Updating AI...
+                        </>
+                    ) : (
+                        <>
+                            <Save className="h-4 w-4" />
+                            Save Changes
+                        </>
+                    )}
                 </button>
             </div>
         </div>

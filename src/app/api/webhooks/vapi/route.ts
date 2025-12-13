@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { CallEvent } from "@/lib/simulation";
+import { VAPI_CONFIG } from "@/lib/env";
 
 // In-memory store for MVP (Replace with DB in production)
 export let realCalls: CallEvent[] = [];
@@ -63,8 +64,37 @@ export async function POST(request: Request) {
 }
 
 export async function GET() {
-    // Dynamic import to avoid build issues
-    const { getCalls } = await import("@/lib/store");
-    const calls = getCalls();
-    return NextResponse.json(calls);
+    try {
+        const response = await fetch(`https://api.vapi.ai/call?assistantId=${VAPI_CONFIG.assistantId}&limit=50`, {
+            headers: {
+                "Authorization": `Bearer ${VAPI_CONFIG.apiKey}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error("Failed to fetch calls from Vapi");
+        }
+
+        const calls = await response.json();
+
+        // Transform Vapi calls to our CallEvent format
+        const formattedCalls: CallEvent[] = calls.map((call: any) => {
+            const isProductive = call.analysis?.successEvaluation === "true";
+            return {
+                id: call.id,
+                caller: "Real Caller",
+                number: call.customer?.number || "Unknown",
+                timestamp: new Date(call.createdAt).toLocaleTimeString(),
+                status: isProductive ? "allowed" : "screened",
+                riskScore: isProductive ? 0 : 80,
+                details: isProductive ? "Voicemail Left" : "Call processed by AI Agent",
+                transcript: call.transcript || "No transcript available",
+            };
+        });
+
+        return NextResponse.json(formattedCalls);
+    } catch (error) {
+        console.error("Error fetching Vapi calls:", error);
+        return NextResponse.json([]);
+    }
 }

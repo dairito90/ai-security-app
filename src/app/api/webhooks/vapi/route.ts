@@ -65,7 +65,8 @@ export async function POST(request: Request) {
 
 export async function GET() {
     try {
-        const response = await fetch(`https://api.vapi.ai/call?assistantId=${VAPI_CONFIG.assistantId}&limit=50`, {
+        // Fetch ALL calls for the account (removes assistantId filter to avoid mismatches)
+        const response = await fetch(`https://api.vapi.ai/call?limit=50`, {
             headers: {
                 "Authorization": `Bearer ${VAPI_CONFIG.apiKey}`
             }

@@ -36,6 +36,7 @@ export default function Home() {
         try {
           const res = await fetch("/api/webhooks/vapi");
           const realCalls = await res.json();
+          console.log("Dashboard Polling Data:", realCalls); // Debug log
           if (Array.isArray(realCalls) && realCalls.length > 0) {
             setActivity(realCalls);
             // Simple stats aggregation for demo
@@ -44,6 +45,8 @@ export default function Home() {
               active: 1, // Assume active if we have calls
               autoAnswered: realCalls.length
             }));
+          } else {
+            console.log("No calls found or invalid format");
           }
         } catch (e) {
           console.error("Failed to fetch real calls", e);
